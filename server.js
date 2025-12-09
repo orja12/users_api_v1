@@ -1,52 +1,41 @@
-
 import express from "express";
 import { PrismaClient } from "@prisma/client";
 
 const app = express();
+const prisma = new PrismaClient();
+
 app.use(express.json());
-const db = new PrismaClient();
 
-app.get("/", (req, res) => res.json({ ok: true, message: "Users API working" }));
+app.get("/", (req, res) => {
+  res.json({ ok: true, service: "users_api_v1", status: "users_api" });
+});
 
-// Create user
-app.post("/users", async (req, res) => {
+// GET /users - إرجاع كل المستخدمين
+app.get("/users", async (req, res) => {
   try {
-    const user = await db.user.create({ data: req.body });
-    res.json(user);
-  } catch (e) {
-    res.json({ error: String(e) });
+    const users = await prisma.user.findMany();
+    res.json(users);
+  } catch (err) {
+    console.error("Error in GET /users:", err);
+    res.status(500).json({ error: "failed_to_list_users" });
   }
 });
 
-// Read users
-app.get("/users", async (req, res) => {
-  const users = await db.user.findMany();
-  res.json(users);
+// POST /users - إنشاء مستخدم جديد
+app.post("/users", async (req, res) => {
+  try {
+    const { email, name } = req.body;
+    const user = await prisma.user.create({
+      data: { email, name }
+    });
+    res.json(user);
+  } catch (err) {
+    console.error("Error in POST /users:", err);
+    res.status(500).json({ error: "failed_to_create_user" });
+  }
 });
 
-// Read user by ID
-app.get("/users/:id", async (req, res) => {
-  const user = await db.user.findUnique({
-    where: { id: Number(req.params.id) }
-  });
-  res.json(user);
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => {
+  console.log(`Users API running on port ${PORT}`);
 });
-
-// Update user
-app.put("/users/:id", async (req, res) => {
-  const user = await db.user.update({
-    where: { id: Number(req.params.id) },
-    data: req.body
-  });
-  res.json(user);
-});
-
-// Delete user
-app.delete("/users/:id", async (req, res) => {
-  const user = await db.user.delete({
-    where: { id: Number(req.params.id) }
-  });
-  res.json(user);
-});
-
-app.listen(3000, () => console.log("Users API running on port 3000"));
